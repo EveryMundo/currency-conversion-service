@@ -1,7 +1,7 @@
 'use strict';
 
-const {config} = require('./config');
 const logr     = require('em-logr').create({ name: 'WORKER'});
+const {config} = require('./config');
 
 const listen = fastify => new Promise((resolve, reject) => {
   logr.debug(`listening to http://0.0.0.0:${config.APP_PORT}`);

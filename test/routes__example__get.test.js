@@ -3,7 +3,7 @@
 require('./test-setup.js');
 
 const
-  cleanrequire = require('@everymundo/cleanrequire'),
+//   cleanrequire = require('@everymundo/cleanrequire'),
   sinon    = require('sinon'),
   {expect} = require('chai');
   // clone    = arg => JSON.parse(JSON.stringify(arg));
