@@ -3,24 +3,22 @@ FROM ubuntu:latest
 
 LABEL maintainer="daniel@everymundo.com"
 
-RUN apt-get update && apt-get upgrade -y
 RUN apt-get autoremove
+RUN apt-get update
+RUN apt-get upgrade -y
 RUN apt-get install -y apt-utils curl git build-essential
-RUN apt-get install -y python
-# RUN apt install screen telnet netcat -y
-
+RUN apt install python -y
+RUN apt-get autoremove
 # RUN useradd -ms /bin/bash node
-
 # USER node
-
 # Install nvm
 RUN curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
 RUN bash -c 'source $HOME/.nvm/nvm.sh   && \
-    nvm install stable                  && \
+    nvm install 11.2                    && \
     nvm use default                     && \
     npm install -g npm@latest           && \
-    npm install -g bunyan pino'
-
+    PYTHON=/usr/bin/python2.7 npm install --prefix "$HOME/.nvm/" -g node-gyp@latest && \
+    PYTHON=/usr/bin/python2.7 npm install --prefix "$HOME/.nvm/" -g bunyan@latest pino-pretty@latest'
 
 RUN mkdir -p /home/node/microservice
 WORKDIR /home/node/microservice
