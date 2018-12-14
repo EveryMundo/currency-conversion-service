@@ -24,7 +24,13 @@ describe('fastify.server.js', () => {
 
   let fastify;
 
-  beforeEach(() => {
+  const cleanRequireLib = () => {
+    cleanrequire('../lib/fastify-singleton');
+
+    return cleanrequire(testFile);
+  };
+
+  beforeEach(async () => {
     // creates sinon sandbox
     box = sinon.createSandbox();
 
@@ -36,12 +42,17 @@ describe('fastify.server.js', () => {
       .forEach((level) => { box.stub(logr, level).callsFake(noop); });
 
     box.stub(sf, 'setProcessEvents').callsFake(sinon.spy(async (f) => { fastify = f; return f; }));
+
+    const server = cleanRequireLib();
+    fastify = await server.init();
   });
 
   // retores the sandbox
   afterEach((done) => {
     box.restore();
-    if (fastify) return fastify.close(done);
+    if (fastify) {
+      return fastify.close(done);
+    }
 
     done();
   });
@@ -49,66 +60,58 @@ describe('fastify.server.js', () => {
   context(`get /${prefixedV}`, () => {
     it('should export expected functions', () => {
       const { data } = cleanrequire('../data');
-      const server = cleanrequire(testFile);
 
-      server.init().then((fasty) => {
-        fasty.inject({ method: 'GET', url: `/${prefixedV}/` }, (err, response) => {
-          expect(err).to.be.null;
-          expect(response).to.have.property('statusCode', 200);
-          expect(response.headers).to.have.property('content-type', 'application/json; charset=utf-8');
+      fastify.inject({ method: 'GET', url: `/${prefixedV}/` }, (err, response) => {
+        expect(err).to.be.null;
+        expect(response).to.have.property('statusCode', 200);
+        expect(response.headers).to.have.property('content-type', 'application/json; charset=utf-8');
 
-          const responseData = JSON.parse(response.payload);
+        const responseData = JSON.parse(response.payload);
 
-          expect(responseData).to.deep.equal(data);
-        });
+        expect(responseData).to.deep.equal(data);
       });
     });
   });
 
   context(`get /${prefixedV}/info`, () => {
-    it('should export expected functions', () => {
-      const server = cleanrequire(testFile);
+    it('should reply with a status 200', () => {
+      const url = `/${prefixedV}/info`;
 
-      server.init().then((fasty) => {
-        fasty.inject({method: 'GET', url: `/${prefixedV}/info`}, (err, response) => {
-          expect(err).to.be.null;
-          expect(response).to.have.property('statusCode', 200);
-          expect(response.headers).to.have.property('content-type', 'application/json; charset=utf-8');
+      fastify.inject({method: 'GET', url}, (err, response) => {
+        expect(err).to.be.null;
 
-          const responseData = JSON.parse(response.payload);
+        expect(response).to.have.property('statusCode', 200, `wrong status for '${url}'`);
+        expect(response.headers).to.have.property('content-type', 'application/json; charset=utf-8');
 
-          const keys = Object.keys(responseData);
-          expect(keys).to.deep.equal(['app', 'loadedAt']);
+        const responseData = JSON.parse(response.payload);
 
-          expect(responseData.loadedAt).to.match(/^\d{4}-\d{2}-\d{2}/);
+        const keys = Object.keys(responseData);
+        expect(keys).to.deep.equal(['app', 'loadedAt']);
 
-          const appKeys = Object.keys(responseData.app);
-          expect(appKeys).to.deep.equal(['name', 'version']);
+        expect(responseData.loadedAt).to.match(/^\d{4}-\d{2}-\d{2}/);
 
-          const {name, version} = require('../package.json');
+        const appKeys = Object.keys(responseData.app);
+        expect(appKeys).to.deep.equal(['name', 'version']);
 
-          expect(responseData.app.name).to.equal(name);
-          expect(responseData.app.version).to.equal(version);
-        });
+        const {name, version} = require('../package.json');
+
+        expect(responseData.app.name).to.equal(name);
+        expect(responseData.app.version).to.equal(version);
       });
     });
   });
 
   context(`get /${prefixedV}/healthcheck`, () => {
     it('should export expected functions', () => {
-      const server = cleanrequire(testFile);
+      fastify.inject({ method: 'GET', url: `/${prefixedV}/healthcheck` }, (err, response) => {
+        expect(err).to.be.null;
+        expect(response).to.have.property('statusCode', 200);
+        expect(response.headers).to.have.property('content-type', 'application/json; charset=utf-8');
 
-      server.init().then((fasty) => {
-        fasty.inject({ method: 'GET', url: `/${prefixedV}/healthcheck` }, (err, response) => {
-          expect(err).to.be.null;
-          expect(response).to.have.property('statusCode', 200);
-          expect(response.headers).to.have.property('content-type', 'application/json; charset=utf-8');
+        const responseData = JSON.parse(response.payload);
+        const expected = {healthy: true, pid: process.pid};
 
-          const responseData = JSON.parse(response.payload);
-          const expected = {healthy: true, pid: process.pid};
-
-          expect(responseData).to.deep.equal(expected);
-        });
+        expect(responseData).to.deep.equal(expected);
       });
     });
   });
@@ -118,25 +121,21 @@ describe('fastify.server.js', () => {
       const url = `/${prefixedV}/convert?value=1000&from=EUR&to=USD`;
 
       it('should export expected functions', () => {
-        cleanrequire('../data');
-        const server = cleanrequire(testFile);
-        server.init().then((fasty) => {
-          fasty.inject({method: 'GET', url}, (err, response) => {
-            expect(err).to.be.null;
-            expect(response).to.have.property('statusCode', 200);
-            expect(response.headers).to.have.property('content-type', 'application/json; charset=utf-8');
+        fastify.inject({method: 'GET', url}, (err, response) => {
+          expect(err).to.be.null;
+          expect(response).to.have.property('statusCode', 200);
+          expect(response.headers).to.have.property('content-type', 'application/json; charset=utf-8');
 
-            const responseData = JSON.parse(response.payload);
-            const expected = {
-              fixed: '1199.47',
-              from:  'EUR',
-              result: 1199.4707934859139,
-              to:     'USD',
-              value:   1000,
-            };
+          const responseData = JSON.parse(response.payload);
+          const expected = {
+            fixed: '1199.47',
+            from:  'EUR',
+            result: 1199.4707934859139,
+            to:     'USD',
+            value:   1000,
+          };
 
-            expect(responseData).to.deep.equal(expected);
-          });
+          expect(responseData).to.deep.equal(expected);
         });
       });
     });
@@ -145,23 +144,20 @@ describe('fastify.server.js', () => {
       context('missing *from* argument', () => {
         const url = `/${prefixedV}/convert?value=1000&to=USD`;
         it(`requesting ${url} should fail`, () => {
-          cleanrequire('../data');
-          const server = cleanrequire(testFile);
-          server.init().then((fasty) => {
-            fasty.inject({ method: 'GET', url }, (err, response) => {
-              expect(err).to.be.null;
-              expect(response).to.have.property('statusCode', 500);
-              expect(response.headers).to.have.property('content-type', 'application/json');
+          fastify.inject({ method: 'GET', url }, (err, response) => {
+            expect(err).to.be.null;
+            expect(response).to.have.property('statusCode', 500);
+            expect(response.headers).to.have.property('content-type');
+            expect(response.headers['content-type']).to.include('application/json');
 
-              const responseData = JSON.parse(response.payload);
-              const expected = {
-                error: 'Internal Server Error',
-                message: 'Unkown currency code [UNDEFINED] in from',
-                statusCode: 500,
-              };
+            const responseData = JSON.parse(response.payload);
+            const expected = {
+              error: 'Internal Server Error',
+              message: 'Unkown currency code [UNDEFINED] in from',
+              statusCode: 500,
+            };
 
-              expect(responseData).to.deep.equal(expected);
-            });
+            expect(responseData).to.deep.equal(expected);
           });
         });
       });
@@ -169,23 +165,20 @@ describe('fastify.server.js', () => {
       context('missing *to* argument', () => {
         const url = `/${prefixedV}/convert?value=1000&from=USD`;
         it(`requesting ${url} should fail`, () => {
-          cleanrequire('../data');
-          const server = cleanrequire(testFile);
-          server.init().then((fasty) => {
-            fasty.inject({ method: 'GET', url }, (err, response) => {
-              expect(err).to.be.null;
-              expect(response).to.have.property('statusCode', 500);
-              expect(response.headers).to.have.property('content-type', 'application/json');
+          fastify.inject({ method: 'GET', url }, (err, response) => {
+            expect(err).to.be.null;
+            expect(response).to.have.property('statusCode', 500);
+            expect(response.headers).to.have.property('content-type');
+            expect(response.headers['content-type']).to.include('application/json');
 
-              const responseData = JSON.parse(response.payload);
-              const expected = {
-                error: 'Internal Server Error',
-                message: 'Unkown currency code [UNDEFINED] in to',
-                statusCode: 500,
-              };
+            const responseData = JSON.parse(response.payload);
+            const expected = {
+              error: 'Internal Server Error',
+              message: 'Unkown currency code [UNDEFINED] in to',
+              statusCode: 500,
+            };
 
-              expect(responseData).to.deep.equal(expected);
-            });
+            expect(responseData).to.deep.equal(expected);
           });
         });
       });
@@ -193,23 +186,20 @@ describe('fastify.server.js', () => {
       context('missing *value* argument', () => {
         const url = `/${prefixedV}/convert?from=EUR&to=USD`;
         it(`requesting ${url} should fail`, () => {
-          cleanrequire('../data');
-          const server = cleanrequire(testFile);
-          server.init().then((fasty) => {
-            fasty.inject({ method: 'GET', url }, (err, response) => {
-              expect(err).to.be.null;
-              expect(response).to.have.property('statusCode', 500);
-              expect(response.headers).to.have.property('content-type', 'application/json');
+          fastify.inject({ method: 'GET', url }, (err, response) => {
+            expect(err).to.be.null;
+            expect(response).to.have.property('statusCode', 500);
+            expect(response.headers).to.have.property('content-type');
+            expect(response.headers['content-type']).to.include('application/json');
 
-              const responseData = JSON.parse(response.payload);
-              const expected = {
-                error: 'Internal Server Error',
-                message: 'Invalid value [NaN]',
-                statusCode: 500,
-              };
+            const responseData = JSON.parse(response.payload);
+            const expected = {
+              error: 'Internal Server Error',
+              message: 'Invalid value [NaN]',
+              statusCode: 500,
+            };
 
-              expect(responseData).to.deep.equal(expected);
-            });
+            expect(responseData).to.deep.equal(expected);
           });
         });
       });
@@ -253,7 +243,8 @@ describe('fastify.server.js', () => {
           fasty.inject({ method: 'GET', url }, (err, response) => {
             expect(err).to.be.null;
             expect(response).to.have.property('statusCode', 500);
-            expect(response.headers).to.have.property('content-type', 'application/json');
+            expect(response.headers).to.have.property('content-type');
+            expect(response.headers['content-type']).to.include('application/json');
 
             const responseData = JSON.parse(response.payload);
             const expected = {
