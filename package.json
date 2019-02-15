@@ -43,21 +43,21 @@
     "chai": "^4.2.0",
     "eslint-config-airbnb-base": "^13.1.0",
     "mocha": "^5.2.0",
-    "nyc": "^13.1.0",
-    "sinon": "^7.2.2"
+    "nyc": "^13.3.0",
+    "sinon": "^7.2.3"
   },
   "dependencies": {
-    "@everymundo/em-eureka": "^1.9.0",
+    "@everymundo/em-eureka": "^1.9.1",
     "@everymundo/generate-microservice-name": "^1.1.1",
     "@everymundo/global-root-dir": "^1.1.0",
     "@everymundo/runner": "^1.1.0",
     "dotenv": "^6.2.0",
     "em-logr": "^1.2.0",
-    "fastify": "^1.13.2",
+    "fastify": "^1.14.1",
     "fastify-helmet": "^3.0.0",
     "fastify-swagger": "^0.16.2",
     "ghooks": "^2.0.4",
     "ip": "^1.1.5",
-    "microtime": "^2.1.8"
+    "microtime": "^2.1.9"
   }
 }
